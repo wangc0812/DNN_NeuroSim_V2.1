@@ -1,0 +1,1 @@
+./NeuroSIM/main 0 ./NeuroSIM/NetWork.csv 5 8 

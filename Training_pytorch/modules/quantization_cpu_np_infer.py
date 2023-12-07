@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from utee import wage_initializer,wage_quantizer
-from torch._jit_internal import weak_script_method
+# from torch._jit_internal import weak_script_method
 import numpy as np
 
 class QConv2d(nn.Conv2d):
@@ -35,7 +35,7 @@ class QConv2d(nn.Conv2d):
         self.name = name
         self.scale  = wage_initializer.wage_init_(self.weight, self.wl_weight, factor=1.0)
 
-    @weak_script_method
+    # @weak_script_method
     def forward(self, input):
         
         weight1 = self.weight * self.scale + (self.weight - self.weight * self.scale).detach()
@@ -46,7 +46,7 @@ class QConv2d(nn.Conv2d):
         bitActivation = int(self.wl_input)
 
         if self.inference == 1:
-            # retention
+            # retention weight change
             weight = wage_quantizer.Retention(weight,self.t,self.v,self.detect,self.target)
             # set parameters for Hardware Inference
             onoffratio = self.onoffratio
@@ -94,14 +94,14 @@ class QConv2d(nn.Conv2d):
                             inputQ = torch.round((2**bitActivation - 1)/1 * (input-0) + 0)
                             outputIN = torch.zeros_like(output)
                             for z in range(bitActivation):
-                                inputB = torch.fmod(inputQ, 2)
+                                inputB = torch.fmod(inputQ, 2) # only 1 bit
                                 inputQ = torch.round((inputQ-inputB)/2)
                                 outputP = torch.zeros_like(output)
                                 # after get the spacial kernel, need to transfer floating weight [-1, 1] to binarized ones
                                 X_decimal = torch.round((2**bitWeight - 1)/2 * (weight+1) + 0)*mask
                                 outputD = torch.zeros_like(output)
                                 for k in range (int(bitWeight/self.cellBit)):
-                                    remainder = torch.fmod(X_decimal, cellRange)*mask
+                                    remainder = torch.fmod(X_decimal, cellRange)*mask # weight percision
                                     X_decimal = torch.round((X_decimal-remainder)/cellRange)*mask
                                     # Now also consider weight has on/off ratio effects
                                     # Here remainder is the weight mapped to Hardware, so we introduce on/off ratio in this value
@@ -202,7 +202,7 @@ class QLinear(nn.Linear):
         self.name = name
         self.scale  = wage_initializer.wage_init_(self.weight, self.wl_weight, factor=1.0)
 
-    @weak_script_method
+    # @weak_script_method
     def forward(self, input):
 
         weight1 = self.weight * self.scale + (self.weight - self.weight * self.scale).detach()
